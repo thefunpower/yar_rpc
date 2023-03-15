@@ -6,6 +6,42 @@
     Connect Email: sunkangchina@163.com
 */
 
+/**
+* 获取登录后的信息
+*/
+function get_sso_logined_info(){
+    //service_set_app_cookie_config();
+    global $sso_user;
+    if(cookie('sso_user_id')){
+        $sso_user = [
+            'user_id'=>cookie('sso_user_id'),
+            'user_account'=>cookie('sso_user_account'),
+            'user_type'=>cookie('sso_user_type'),
+        ];
+        return $sso_user;
+    }
+} 
+/**
+* 登录
+*/
+function sso_service_login(){
+  $url = host().'sso/login/check';
+  $rpc = get_service('service');
+  $res = $rpc->get('sso'); 
+  if(!cookie('sso_user_id')){
+     jump($res['domain'].'sso/login/index?redirect_url='.urlencode($url));
+  }
+}
+/**
+* 退出系统
+*/
+function get_rpc_logout(){
+    remove_cookie("sso_user_id");
+    remove_cookie("sso_user_account");
+    remove_cookie("sso_user_type"); 
+} 
+
+
 add_action("app.start",function(){
     global $router;
     $router->get("/sso/login/check",function()
@@ -46,37 +82,3 @@ function sso_login_set_cookie($data,$err){
     cookie('sso_user_type',$data['type'],$time);
 }
 
-/**
-* 获取登录后的信息
-*/
-function get_sso_logined_info(){
-    //service_set_app_cookie_config();
-    global $sso_user;
-    if(cookie('sso_user_id')){
-        $sso_user = [
-            'user_id'=>cookie('sso_user_id'),
-            'user_account'=>cookie('sso_user_account'),
-            'user_type'=>cookie('sso_user_type'),
-        ];
-        return $sso_user;
-    }
-} 
-/**
-* 登录
-*/
-function sso_service_login(){
-  $url = host().'sso/login/check';
-  $rpc = get_service('service');
-  $res = $rpc->get('sso'); 
-  if(!cookie('sso_user_id')){
-     jump($res['domain'].'sso/login/index?redirect_url='.urlencode($url));
-  }
-}
-/**
-* 退出系统
-*/
-function get_rpc_logout(){
-    remove_cookie("sso_user_id");
-    remove_cookie("sso_user_account");
-    remove_cookie("sso_user_type"); 
-} 
