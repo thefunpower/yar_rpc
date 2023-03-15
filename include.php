@@ -72,105 +72,6 @@ function get_service_info($service_name){
   if(!$client){return;}
   $res = $client->get('sso');
   return $res;
-}
-/**
-* 基类
-*/ 
-class plat{
-    public $check_login = true;
-    /**
-    * 初始化
-    */
-    public function __construct(){
-        $this->init();
-    }
-    /**
-    * 设置COOKIE作用域
-    * 判断是否登录，未登录跳到SSO登录 
-    */
-    public function init(){
-        service_set_app_cookie_config();
-        if($this->check_login){
-            get_rpc_login();    
-        }        
-    } 
-    /**
-    * 登录检测
-    * 使用token检测登录信息
-    * $config['redirect_url'] = '/';
-    */
-    protected function login_use_token(){ 
-        global $config;
-        $token = g('token');
-        $redirect_url = g('redirect_url')?:$config['redirect_url'];
-        if($token){
-            $data = json_decode(aes_decode($token),true);
-            if($data && $data['code'] == 0 && $data['data']['user_id']){ 
-                $err = $data['time']+10-time() > 0?false:true;
-                $this->set_cookie($data['data'],$err); 
-                jump($redirect_url);
-            } 
-        } 
-    }
-    /**
-    * 设置COOKIE登录信息
-    * [user] => yiiphp@foxmail.com
-    * [type] => email
-    * [created_at] => 2023-02-13 17:15:33
-    * [user_id] => 2
-    */
-    protected function set_cookie($data,$err){ 
-        $content = "请求异常，请返回原地址重新发起请求";
-        if(!$data['user_id'] || !$data['user'] || !$data['type']){
-            $err = true;
-            $content = '已阻止非法请求，如有疑问请联系管理员';
-        }
-        if($err){
-            $title = "登录异常";
-            return view('error',[
-                'title'=>$title,
-                'content'=>$content
-            ]); 
-        }
-        $time = time()+86400*365*10;
-        cookie('sso_user_id',$data['user_id'],$time);
-        cookie('sso_user_account',$data['user'],$time);
-        cookie('sso_user_type',$data['type'],$time);
-    } 
-}
-/**
-* 获取登录后的信息
-*/
-function get_sso_logined_info(){
-    global $sso_user;
-    if(cookie('sso_user_id')){
-        $sso_user = [
-            'user_id'=>cookie('sso_user_id'),
-            'user_account'=>cookie('sso_user_account'),
-            'user_type'=>cookie('sso_user_type'),
-        ];
-        return $sso_user;
-    }
-}
- 
-/**
-* 登录
-*/
-function get_rpc_login(){
-  $url = host().'login/check';
-  $rpc = get_service('service');
-  $res = $rpc->get('sso'); 
-  if(!cookie('sso_user_id')){
-    jump($res['domain'].'login/index?redirect_url='.urlencode($url));
-  }
-}
-/**
-* 退出系统
-*/
-function get_rpc_logout(){
-    remove_cookie("sso_user_id");
-    remove_cookie("sso_user_account");
-    remove_cookie("sso_user_type"); 
 } 
 /**
 * 初始化服务中心
@@ -377,12 +278,12 @@ function yar_api_run($name,$class_name = ''){
     if(in_array($name,$rpc_service_in)){
         $class = '\plugins\\rpc_service\\service\\'.$name;
     }else{ 
-        $class = db_get_one("rpc_pass_service",'ns',['slug'=>$name,'status'=>1]); 
-        if($class && $class_name){
+        $class = "\plugins\\rpc_".$name."\\service";
+        if($class_name){
             $class = $class.'\\'.$class_name; 
-        }       
+        }    
     }  
-    $class = str_replace("\\\\","\\",$class);
+    $class = str_replace("\\\\","\\",$class); 
     if(class_exists($class)){ 
         $service = new Yar_Server(new $class());
         $service->handle();
