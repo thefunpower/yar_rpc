@@ -1,0 +1,21 @@
+{
+    "name": "thefunpower/yar_rpc",
+    "type": "library",
+    "description": "RPC服务控制中心",
+    "keywords": ["php"],
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "ken.sun",
+            "email": "sunkangchina@163.com" 
+        }
+    ],
+    "require": {
+        "php": ">=7.1"
+    }, 
+    "autoload": { 
+        "files": [ 
+            "./include.php"
+        ]
+    }
+}
