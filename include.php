@@ -47,11 +47,14 @@ function __plat_cookie_get($c){
     if($c['cookie_domain'] && $c['cookie_prefix']){
         if(strpos($config['host'],$c['cookie_domain'])!==false){
             $flag = true;
-            $config['cookie_domain'] = trim($c['cookie_domain']);
+            //$config['cookie_domain'] = trim($c['cookie_domain']);
             $config['cookie_prefix'] = trim($c['cookie_prefix']);  
         }
     }
     if(!$flag){
+        if(is_json_request()){
+            json_error(['msg'=>'应用未注册或未正确配置域名信息']);
+        }
         die("
             <div style='color:red;'>访问被中止！<br>请在软件平台控制中心正确配置当前应用根域名信息!</div>
         ");

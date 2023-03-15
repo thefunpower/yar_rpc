@@ -15,7 +15,8 @@
     }, 
     "autoload": { 
         "files": [ 
-            "./include.php"
+            "./include.php",
+            "./service/sso.php"
         ]
     }
 }
