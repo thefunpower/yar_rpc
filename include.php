@@ -131,7 +131,7 @@ function get_service($service_name,$rpc_url='',$class_name = ''){
     //RPC服务中心自带的服务
     $rpc_service_in = rpc_service_in(); 
     if(!in_array($service_name,$rpc_service_in)){
-        $rpc_url = $rpc_url.'rpc_client/';
+        $rpc_url = $rpc_url.'rpc_service/';
         if($class_name){ 
             $rpc_url = $rpc_url.$service_name.'/'.$class_name; 
         }
@@ -296,11 +296,11 @@ function yar_api_run($name,$class_name = ''){
 }
 add_action("app.start",function(){
     global $router;
-    // /rpc_client/sso/login_by_email
-    $router->get('/rpc_client/(\w+)/(\w+)',function($rpc_name,$class_name){  
+    // /rpc_service/sso/login_by_email
+    $router->get('/rpc_service/(\w+)/(\w+)',function($rpc_name,$class_name){  
         yar_api_run($rpc_name,$class_name);
     }); 
-    $router->post('/rpc_client/(\w+)/(\w+)',function($rpc_name,$class_name){   
+    $router->post('/rpc_service/(\w+)/(\w+)',function($rpc_name,$class_name){   
         yar_api_run($rpc_name,$class_name);
     });  
 });
