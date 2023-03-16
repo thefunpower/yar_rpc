@@ -43,14 +43,16 @@ function service_set_app_cookie_config(){
 * 内部函数，COOKIE根域名判断
 */
 function __plat_cookie_get($c){
-    global $config;
+    //cookie暂不用配置
+    return;
+    global $config; 
     if($c['cookie_domain'] && $c['cookie_prefix']){
         if(strpos($config['host'],$c['cookie_domain'])!==false){
             $flag = true;
             //$config['cookie_domain'] = trim($c['cookie_domain']);
             $config['cookie_prefix'] = trim($c['cookie_prefix']);  
         }
-    }
+    } 
     if(!$flag){
         if(is_json_request()){
             json_error(['msg'=>'应用未注册或未正确配置域名信息']);
