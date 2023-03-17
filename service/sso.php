@@ -29,7 +29,19 @@ function sso_service_login(){
   $rpc = get_service('service');
   $res = $rpc->get('sso'); 
   if(!cookie('sso_user_id')){
-     jump($res['domain'].'sso/login/index?redirect_url='.urlencode($url));
+     $return_url = '';
+     $jump = $_SERVER['REQUEST_URI']; 
+     if($jump){
+        if(substr($jump,0,1) == '/'){
+            $jump = substr($jump,1);
+        }
+        $return_url = host().$jump;
+     }  
+     $new_url = $res['domain'].'sso/login/index?redirect_url='.urlencode($url);
+     if($return_url){
+        $new_url = $new_url.'&return_url='.urlencode($return_url);
+     }
+     jump($new_url);
   }
 }
 /**
@@ -39,33 +51,32 @@ function get_rpc_logout(){
     remove_cookie("sso_user_id");
     remove_cookie("sso_user_account");
     remove_cookie("sso_user_type"); 
-} 
-
+}  
 
 add_action("app.start",function(){
     global $router;
     $router->get("/sso/login/check",function()
-	{
-		sso_login_return();
-	});
-});
-
-
+    {
+        sso_login_return();
+    });
+}); 
 
 function sso_login_return(){
     $token = g('token');
     $data = json_decode(aes_decode($token),true); 
-    $redirect_url = g('redirect_url')?:$config['redirect_url']; 
+    $return_url = g('return_url')?:$config['return_url']; 
     if($token){
         $data = json_decode(aes_decode($token),true); 
         if($data && $data['code'] == 0 && $data['data']['user_id']){ 
             $err = $data['time']+10-time() > 0?false:true;
             sso_login_set_cookie($data['data'],$err); 
-            jump($redirect_url?:'/');
+            jump($return_url?:'/');
         }else{
-
+            exit('Token Error');
         }
-    }  
+    }else{
+        exit('Request Failed');
+    }
 }
 
 function sso_login_set_cookie($data,$err){
