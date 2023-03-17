@@ -149,103 +149,110 @@ function get_service($service_name,$rpc_url='',$class_name = ''){
     $token = base64_encode($rsa->encode(json_encode([
         'time'=>time(),
         'api_name'=>$service_name,
-    ]),$publickey)); 
-    $ak     = 'anonymous';
+    ]),$publickey));  
     $domain = host();  
     $client = new Yar_Client($rpc_url);  
     $client->SetOpt(YAR_OPT_HEADER, [
-        "TOKEN:".$token,
-        "AK:".$ak,
-        "DOMAIN:".$domain,
-        "YARTPYE:RSA",
+        "Authorization: Bearer ".$token, 
+        "DOMAIN:".$domain 
     ]); 
+    //RPC是不是远程的服务,默认调用本地的服务
+    if($config['rpc_is_remote']){
+
+    }else{
+        $client->SetOpt(YAR_OPT_RESOLVE, array("host:80:127.0.0.1"));    
+    }   
+    if(YAR_VERSION >= '2.3.0'){
+        $client->setOpt(YAR_OPT_PROVIDER, "provider");
+        $client->setOpt(YAR_OPT_TOKEN, $token);   
+    } 
     $client->SetOpt(YAR_OPT_CONNECT_TIMEOUT, 3000);   
+    do_action("rpc.client",$client);  
     return $client; 
 }
 
 
+/**
+* header auth
+*/
+function rpc_auth_bearer(){
+    $token = trim($_SERVER['HTTP_AUTHORIZATION']);
+    if(strpos($token,'Bearer')!==false){
+        $token = substr($token,strlen('Bearer'));
+    }
+    $data = [ 
+        'domain'=> $_SERVER['HTTP_DOMAIN'], 
+        'token' => $token,
+    ]; 
+    if(!$token){
+        return [
+            'msg' => '通讯异常，错误发现在'.now(),
+            'label'=> 1003,
+            'code'=> 403
+        ]; 
+    }
+    //RAS 
+    $privatekey = PATH.'data/privatekey.pem';
+    if(!file_exists($privatekey)){
+        return [
+            'msg'  => '通讯证书异常，错误发现在'.now(),
+            'label'=> 1001,
+            'code' => 403
+        ]; 
+    }
+    $privatekey = file_get_contents($privatekey);
+    $rsa = new lib\Rsa;   
+    $b_token = base64_decode($token); 
+    $decrypt_data = json_decode(@$rsa->decode($b_token,$privatekey),true);
+    if(!$decrypt_data){
+        return [ 
+            'token'=> $token,
+            'msg'  => '通讯证书异常，错误发现在'.now(),
+            'label'=> 1002,
+            'code' => 403
+        ]; 
+    }
+    if(!$decrypt_data['time']){
+        return [  
+            'msg'  => '请求异常，错误发现在'.now(),
+            'label'=> 10020,
+            'code' => 403
+        ]; 
+    }
+    if( $decrypt_data['time']+10 > time()){
+        
+    }else{
+        return [  
+            'msg'  => '请求异常，错误发现在'.now(),
+            'label'=> 10021,
+            'code' => 403
+        ]; 
+    }   
+}
 
 /**
 * RPC 基类
 */
 class rpc_service{ 
-    //请求SERVER信息
-    protected $data;
-    //解密后数据
-    protected $decrypt_data;
-
+    public $err;
     public function __construct(){ 
-        $this->data = [
-            'type'  => $_SERVER['HTTP_YARTPYE'],
-            'domain'=> $_SERVER['HTTP_DOMAIN'],
-            'ak'    => $_SERVER['HTTP_AK'],
-            'token' => $_SERVER['HTTP_TOKEN'],
-        ];
-    }
+        if(YAR_VERSION >= '2.3.0'){
+        }else{
+            $err = rpc_auth_bearer();  
+            log_error('YAR_VERSION 需要 2.3.0或以上版本，当前版本为'.YAR_VERSION);
+            log_error($err);
+        } 
+    }  
     /**
-    * 运行RPC函数时会验证通讯是否允许
-    */
-    protected function run($call){ 
-        $token = $this->data['token'];
-        $ak = $this->data['ak'];
-        $domain = $this->data['domain'];
-        $type = $this->data['type'];
-        if(!in_array($type,['RSA','AES'])){
-            return [
-                'msg' => '服务异常，错误发现在'.now(),
-                'label'=> 1000,
-                'code'=> 404
-            ]; 
+     * yar auth
+     */
+    protected function __auth($provider, $token) { 
+        $err = rpc_auth_bearer();  
+        if($err){
+            return false;
+        }else{
+            return true;    
         }
-        //RAS
-        if($type == 'RSA'){
-            $privatekey = PATH.'data/privatekey.pem';
-            if(!file_exists($privatekey)){
-                return [
-                    'msg'  => '通讯证书异常，错误发现在'.now(),
-                    'label'=> 1001,
-                    'code' => 403
-                ]; 
-            }
-            $privatekey = file_get_contents($privatekey);
-            $rsa = new lib\Rsa;   
-            $b_token = base64_decode($token); 
-            $decrypt_data = json_decode(@$rsa->decode($b_token,$privatekey),true);
-            $this->decrypt_data = $decrypt_data;
-            if(!$decrypt_data){
-                return [ 
-                    'token'=>$token,
-                    'msg'  => '通讯证书异常，错误发现在'.now(),
-                    'label'=> 1002,
-                    'code' => 403
-                ]; 
-            }
-            if(!$decrypt_data['time']){
-                return [  
-                    'msg'  => '请求异常，错误发现在'.now(),
-                    'label'=> 10020,
-                    'code' => 403
-                ]; 
-            }
-            if( $decrypt_data['time']+10 > time()){
-                
-            }else{
-                return [  
-                    'msg'  => '请求异常，错误发现在'.now(),
-                    'label'=> 10021,
-                    'code' => 403
-                ]; 
-            }
-
-        }
-        if(!$token){
-            return [
-                'msg' => '通讯异常，错误发现在'.now(),
-                'label'=> 1003,
-                'code'=> 403
-            ]; 
-        }
-        return $call();
     }
 }
 /**
@@ -289,8 +296,8 @@ function yar_api_run($name,$class_name = ''){
         }    
     }  
     $class = str_replace("\\\\","\\",$class); 
-    if(class_exists($class)){ 
-        $service = new Yar_Server(new $class());
+    if(class_exists($class)){
+        $service = new Yar_Server(new $class);
         $service->handle();
     }else{
         json_error(['msg'=>'service '.$class.' is not exists']);
