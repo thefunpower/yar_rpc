@@ -249,6 +249,8 @@ class rpc_service{
     protected function __auth($provider, $token) { 
         $err = rpc_auth_bearer();  
         if($err){
+            log_error("RPC调用权限异常"); 
+            log_error($err);
             return false;
         }else{
             return true;    
@@ -263,11 +265,11 @@ function get_api_service($service,$class_name,$call){
     $client = get_service('service');  
     $res = $client->get($service);   
     //取到所需服务对应的接口域名，并发起RPC请求
-    if($res['code'] == 0 && $res['domain']){   
+    if($res['code'] == 0 && $res['domain']){ 
         $client = get_service($service,$res['domain'],$class_name);  
         return $call($client);
     }else{
-
+        log_error("服务异常".$service."，可能是此服务未来返回域名！"); 
     } 
 }
 function rpc_service_in(){
@@ -296,11 +298,11 @@ function yar_api_run($name,$class_name = ''){
         }    
     }  
     $class = str_replace("\\\\","\\",$class); 
-    if(class_exists($class)){
+    if(class_exists($class)){ 
         $service = new Yar_Server(new $class);
         $service->handle();
     }else{
-        json_error(['msg'=>'service '.$class.' is not exists']);
+        log_error("服务不存在".$class); 
     } 
 }
 add_action("app.start",function(){
